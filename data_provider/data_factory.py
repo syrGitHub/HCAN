@@ -41,9 +41,11 @@ def data_provider(args, flag):
         target=args.target,
         timeenc=timeenc,
         freq=freq,
-        train_only=train_only
+        train_only=train_only,
+        num_coarse=args.num_coarse,
+        num_fine=args.num_fine
     )
-    print(flag, len(data_set))
+    print(flag, len(data_set), args.features)
     data_loader = DataLoader(
         data_set,
         batch_size=batch_size,

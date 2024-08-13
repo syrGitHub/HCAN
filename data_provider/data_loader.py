@@ -6,6 +6,7 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from sklearn.preprocessing import StandardScaler
 from utils.timefeatures import time_features
+from utils.Group_helper import Group_helper
 import warnings
 
 warnings.filterwarnings('ignore')
@@ -14,7 +15,7 @@ warnings.filterwarnings('ignore')
 class Dataset_ETT_hour(Dataset):
     def __init__(self, root_path, flag='train', size=None,
                  features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, timeenc=0, freq='h', train_only=False):
+                 target='OT', scale=True, timeenc=0, freq='h', train_only=False, num_coarse=2, num_fine=4):
         # size [seq_len, label_len, pred_len]
         # info
         if size == None:
@@ -36,9 +37,17 @@ class Dataset_ETT_hour(Dataset):
         self.timeenc = timeenc
         self.freq = freq
 
+        self.num_coarse = num_coarse
+        self.num_fine = num_fine
+
         self.root_path = root_path
         self.data_path = data_path
         self.__read_data__()
+
+    def __build_group__(self, dataset, scale_y, groups):
+        # print("dataset.shape", dataset.shape, type(dataset))   # (42957, 5)
+        group = Group_helper(dataset, groups, scale_y) # , Max=args.score_range, Min=0)
+        return group
 
     def __read_data__(self):
         self.scaler = StandardScaler()
@@ -79,6 +88,18 @@ class Dataset_ETT_hour(Dataset):
         self.data_y = data[border1:border2]
         self.data_stamp = data_stamp
 
+        coarse_group = self.__build_group__(self.data_y, self.scaler, self.num_coarse)
+        coase_cls_labels, coarse_glabel_train, coarse_rlabel_train = coarse_group.produce_label(self.data_y)  # [Channel, num, class_coarse] torch.Size([5, 42957, 2])
+        # print("label_c, reg_c", coarse_glabel_train.shape, coarse_rlabel_train.shape)
+        self.reg_c = coarse_rlabel_train.permute(1, 0, 2)   # [num, Channel, class_coarse]
+        self.label_c = coase_cls_labels.permute(1, 0)   # [num, Channel]
+
+        fine_group = self.__build_group__(self.data_y, self.scaler, self.num_fine)
+        fine_cls_labels, fine_glabel_train, fine_rlabel_train = fine_group.produce_label(self.data_y)
+        self.reg_f = fine_rlabel_train.permute(1, 0, 2)
+        self.label_f = fine_cls_labels.permute(1, 0)
+        # print("label_f, reg_f", self.reg_f, self.reg_f.shape, self.label_f, self.label_f.shape)
+
     def __getitem__(self, index):
         s_begin = index
         s_end = s_begin + self.seq_len
@@ -90,7 +111,12 @@ class Dataset_ETT_hour(Dataset):
         seq_x_mark = self.data_stamp[s_begin:s_end]
         seq_y_mark = self.data_stamp[r_begin:r_end]
 
-        return seq_x, seq_y, seq_x_mark, seq_y_mark
+        reg_c = self.reg_c[r_begin:r_end]
+        label_c = self.label_c[r_begin:r_end]
+        reg_f = self.reg_f[r_begin:r_end]
+        label_f = self.label_f[r_begin:r_end]
+
+        return seq_x, seq_y, seq_x_mark, seq_y_mark, reg_c, label_c, reg_f, label_f
 
     def __len__(self):
         return len(self.data_x) - self.seq_len - self.pred_len + 1
@@ -102,7 +128,7 @@ class Dataset_ETT_hour(Dataset):
 class Dataset_ETT_minute(Dataset):
     def __init__(self, root_path, flag='train', size=None,
                  features='S', data_path='ETTm1.csv',
-                 target='OT', scale=True, timeenc=0, freq='t', train_only=False):
+                 target='OT', scale=True, timeenc=0, freq='t', train_only=False, num_coarse=2, num_fine=4):
         # size [seq_len, label_len, pred_len]
         # info
         if size == None:
@@ -124,9 +150,17 @@ class Dataset_ETT_minute(Dataset):
         self.timeenc = timeenc
         self.freq = freq
 
+        self.num_coarse = num_coarse
+        self.num_fine = num_fine
+
         self.root_path = root_path
         self.data_path = data_path
         self.__read_data__()
+
+    def __build_group__(self, dataset, scale_y, groups):
+        # print("dataset.shape", dataset.shape, type(dataset))   # (42957, 5)
+        group = Group_helper(dataset, groups, scale_y) # , Max=args.score_range, Min=0)
+        return group
 
     def __read_data__(self):
         self.scaler = StandardScaler()
@@ -169,6 +203,19 @@ class Dataset_ETT_minute(Dataset):
         self.data_y = data[border1:border2]
         self.data_stamp = data_stamp
 
+        coarse_group = self.__build_group__(self.data_y, self.scaler, self.num_coarse)
+        coase_cls_labels, coarse_glabel_train, coarse_rlabel_train = coarse_group.produce_label(
+            self.data_y)  # [Channel, num, class_coarse] torch.Size([5, 42957, 2])
+        # print("label_c, reg_c", coarse_glabel_train.shape, coarse_rlabel_train.shape)
+        self.reg_c = coarse_rlabel_train.permute(1, 0, 2)  # [num, Channel, class_coarse]
+        self.label_c = coase_cls_labels.permute(1, 0)  # [num, Channel]
+
+        fine_group = self.__build_group__(self.data_y, self.scaler, self.num_fine)
+        fine_cls_labels, fine_glabel_train, fine_rlabel_train = fine_group.produce_label(self.data_y)
+        self.reg_f = fine_rlabel_train.permute(1, 0, 2)
+        self.label_f = fine_cls_labels.permute(1, 0)
+        # print("label_f, reg_f", self.reg_f, self.reg_f.shape, self.label_f, self.label_f.shape)
+
     def __getitem__(self, index):
         s_begin = index
         s_end = s_begin + self.seq_len
@@ -180,7 +227,12 @@ class Dataset_ETT_minute(Dataset):
         seq_x_mark = self.data_stamp[s_begin:s_end]
         seq_y_mark = self.data_stamp[r_begin:r_end]
 
-        return seq_x, seq_y, seq_x_mark, seq_y_mark
+        reg_c = self.reg_c[r_begin:r_end]
+        label_c = self.label_c[r_begin:r_end]
+        reg_f = self.reg_f[r_begin:r_end]
+        label_f = self.label_f[r_begin:r_end]
+
+        return seq_x, seq_y, seq_x_mark, seq_y_mark, reg_c, label_c, reg_f, label_f
 
     def __len__(self):
         return len(self.data_x) - self.seq_len - self.pred_len + 1
@@ -192,7 +244,7 @@ class Dataset_ETT_minute(Dataset):
 class Dataset_Custom(Dataset):
     def __init__(self, root_path, flag='train', size=None,
                  features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, timeenc=0, freq='h', train_only=False):
+                 target='OT', scale=True, timeenc=0, freq='h', train_only=False, num_coarse=2, num_fine=4):
         # size [seq_len, label_len, pred_len]
         # info
         if size == None:
@@ -215,9 +267,17 @@ class Dataset_Custom(Dataset):
         self.freq = freq
         self.train_only = train_only
 
+        self.num_coarse = num_coarse
+        self.num_fine = num_fine
+
         self.root_path = root_path
         self.data_path = data_path
         self.__read_data__()
+
+    def __build_group__(self, dataset, scale_y, groups):
+        # print("dataset.shape", dataset.shape, type(dataset))   # (42957, 5)
+        group = Group_helper(dataset, groups, scale_y) # , Max=args.score_range, Min=0)
+        return group
 
     def __read_data__(self):
         self.scaler = StandardScaler()
@@ -272,6 +332,19 @@ class Dataset_Custom(Dataset):
         self.data_x = data[border1:border2]
         self.data_y = data[border1:border2]
         self.data_stamp = data_stamp
+        # print("self.data_y.shape", self.data_y.shape)   # (42957, 5) [num, Channel]
+
+        coarse_group = self.__build_group__(self.data_y, self.scaler, self.num_coarse)
+        coase_cls_labels, coarse_glabel_train, coarse_rlabel_train = coarse_group.produce_label(self.data_y)  # [Channel, num, class_coarse] torch.Size([5, 42957, 2])
+        # print("label_c, reg_c", coarse_glabel_train.shape, coarse_rlabel_train.shape)
+        self.reg_c = coarse_rlabel_train.permute(1, 0, 2)   # [num, Channel, class_coarse]
+        self.label_c = coase_cls_labels.permute(1, 0)   # [num, Channel]
+
+        fine_group = self.__build_group__(self.data_y, self.scaler, self.num_fine)
+        fine_cls_labels, fine_glabel_train, fine_rlabel_train = fine_group.produce_label(self.data_y)
+        self.reg_f = fine_rlabel_train.permute(1, 0, 2)
+        self.label_f = fine_cls_labels.permute(1, 0)
+        # print("label_f, reg_f", self.reg_f, self.reg_f.shape, self.label_f, self.label_f.shape)
 
     def __getitem__(self, index):
         s_begin = index
@@ -284,7 +357,12 @@ class Dataset_Custom(Dataset):
         seq_x_mark = self.data_stamp[s_begin:s_end]
         seq_y_mark = self.data_stamp[r_begin:r_end]
 
-        return seq_x, seq_y, seq_x_mark, seq_y_mark
+        reg_c = self.reg_c[r_begin:r_end]
+        label_c = self.label_c[r_begin:r_end]
+        reg_f = self.reg_f[r_begin:r_end]
+        label_f = self.label_f[r_begin:r_end]
+
+        return seq_x, seq_y, seq_x_mark, seq_y_mark, reg_c, label_c, reg_f, label_f
 
     def __len__(self):
         return len(self.data_x) - self.seq_len - self.pred_len + 1
@@ -296,7 +374,7 @@ class Dataset_Custom(Dataset):
 class Dataset_Pred(Dataset):
     def __init__(self, root_path, flag='pred', size=None,
                  features='S', data_path='ETTh1.csv',
-                 target='OT', scale=True, inverse=False, timeenc=0, freq='15min', cols=None, train_only=False):
+                 target='OT', scale=True, inverse=False, timeenc=0, freq='15min', cols=None, train_only=False, num_coarse=2, num_fine=4):
         # size [seq_len, label_len, pred_len]
         # info
         if size == None:
