@@ -63,8 +63,8 @@ parser.add_argument('--do_predict', action='store_true', help='whether to predic
 # optimization
 parser.add_argument('--num_workers', type=int, default=10, help='data loader num workers')
 parser.add_argument('--itr', type=int, default=2, help='experiments times')
-parser.add_argument('--train_epochs', type=int, default=10, help='train epochs')
-parser.add_argument('--batch_size', type=int, default=32, help='batch size of train input data')
+parser.add_argument('--train_epochs', type=int, default=30, help='train epochs')
+parser.add_argument('--batch_size', type=int, default=64, help='batch size of train input data')
 parser.add_argument('--patience', type=int, default=3, help='early stopping patience')
 parser.add_argument('--learning_rate', type=float, default=0.0001, help='optimizer learning rate')
 parser.add_argument('--des', type=str, default='test', help='exp description')
@@ -76,8 +76,28 @@ parser.add_argument('--use_amp', action='store_true', help='use automatic mixed 
 parser.add_argument('--use_gpu', type=bool, default=True, help='use gpu')
 parser.add_argument('--gpu', type=int, default=0, help='gpu')
 parser.add_argument('--use_multi_gpu', action='store_true', help='use multiple gpus', default=False)
-parser.add_argument('--devices', type=str, default='0,1,2,3', help='device ids of multile gpus')
+parser.add_argument('--devices', type=str, default='4,5,6,7', help='device ids of multile gpus')
 parser.add_argument('--test_flop', action='store_true', default=False, help='See utils/tools for usage')
+
+# QAP
+parser.add_argument("--num_coarse", default=2, type=int, help="number of coarse set")
+parser.add_argument("--num_fine", default=4, type=int, help="number of fine set")
+parser.add_argument('--lambda_cls', type=float, default=0.01, help='lambda_cls')
+parser.add_argument('--lambda_acl', type=float, default=1, help='lambda_acl')
+parser.add_argument('--lambda_reg', type=float, default=1, help='lambda_reg')
+parser.add_argument('--lambda_direct', type=float, default=1, help='lambda_reg')
+parser.add_argument('--hidden_dim', type=int, default=512, help='the dimension of the hidden layer')
+
+# DBU
+parser.add_argument('--etrans_func', default='softplus', type=str, help='type of evidence, softplus, exp, relu, softmax')
+parser.add_argument("--edl_loss", default='edl_mse', type=str, help='train cost function, edl, edl_mse, ce')
+parser.add_argument('--annealing_start', default=0.01, type=float, help='num of random')
+parser.add_argument('--annealing_step', default=10, type=float, help='num of random')
+parser.add_argument("--use_span_weight", type=bool, default=False
+                    , help="range: [0,1.0], the weight of negative span for the loss.")
+parser.add_argument('--with_kl', type=bool, default=True, help='')
+parser.add_argument('--with_uc', type=bool, default=True, help='')
+parser.add_argument('--with_iw', type=bool, default=True, help='')
 
 args = parser.parse_args()
 
@@ -97,7 +117,7 @@ Exp = Exp_Main
 if args.is_training:
     for ii in range(args.itr):
         # setting record of experiments
-        setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(
+        setting = '{}_{}_{}_ft{}_sl{}_ll{}_pl{}_lc{}_lr{}_dm{}_nh{}_el{}_dl{}_df{}_fc{}_eb{}_dt{}_{}_{}'.format(
             args.model_id,
             args.model,
             args.data,
@@ -105,6 +125,8 @@ if args.is_training:
             args.seq_len,
             args.label_len,
             args.pred_len,
+            args.lambda_cls,
+            args.learning_rate,
             args.d_model,
             args.n_heads,
             args.e_layers,
