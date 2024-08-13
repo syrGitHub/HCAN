@@ -3,7 +3,6 @@ from exp.exp_basic import Exp_Basic
 from models import Informer, Autoformer, Transformer, DLinear, Linear, NLinear
 from utils.tools import EarlyStopping, adjust_learning_rate, visual, visual_all, test_params_flop
 from utils.metrics import metric
-from utils.DBU import Tagger_Evidence
 from utils.confusion_matrix import Confusion_Matrix
 
 import numpy as np
@@ -204,8 +203,6 @@ class Exp_Main(Exp_Basic):
             iter_count = 0
             loss_reg_coarse = 0.0
             loss_reg_fine = 0.0
-            coarse_edl = Tagger_Evidence(self.args, self.args.num_coarse)
-            fine_edl = Tagger_Evidence(self.args, self.args.num_fine)
             train_loss = []
 
             self.model.train()
