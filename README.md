@@ -22,7 +22,7 @@ You can obtain all the benchmarks from Google Drive (https://drive.google.com/dr
 2. Train the model. We provide the experiment scripts of all benchmarks under the folder ./scripts. Now you can reproduce the experiment results by:
 
 ```javascript
-sh ETTh1.sh
+sh ./scripts/ETTh1.sh
 ```
 
 ## :sparkling_heart: Acknowledgements
