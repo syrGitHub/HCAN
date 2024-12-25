@@ -1,5 +1,10 @@
 # Hierarchical Classification Auxiliary Network for Time Series Forecasting
 
+[![AAAI](https://img.shields.io/badge/AAAI'25-HCAN-orange)](https://arxiv.org/abs/2405.18975)  [![Python](https://img.shields.io/badge/Python-3.8%2B-blue)](https://www.python.org/)  [![PyTorch](https://img.shields.io/badge/PyTorch-1.9.0-blue)](https://pytorch.org/)  ![Stars](https://img.shields.io/github/stars/syrGitHub/HCAN)  ![Visits Badge](https://badges.pufler.dev/visits/syrGitHub/HCAN)
+
+This code is the official PyTorch implementation of our AAAI'25 paper: [Hierarchical Classification Auxiliary Network for Time Series Forecasting](https://arxiv.org/abs/2405.18975).
+
+🚩 News (2024.12) HCAN has been accepted by AAAI 2025.
 
 ## :sparkles: Abstract
 ![model](fig/model.png)
